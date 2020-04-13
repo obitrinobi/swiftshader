@@ -125,6 +125,7 @@ void Context::init()
 
 	pixelShader = nullptr;
 	vertexShader = nullptr;
+	geometryShader = nullptr;
 
 	occlusionEnabled = false;
 

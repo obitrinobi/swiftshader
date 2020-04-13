@@ -32,6 +32,7 @@ namespace sw
 	struct DrawCall;
 	class PixelShader;
 	class VertexShader;
+    class GeometryShader;
 	class SwiftConfig;
 	struct Task;
 	class Resource;
@@ -326,6 +327,11 @@ namespace sw
 		// Programmable pipelines
 		void setPixelShader(const PixelShader *shader);
 		void setVertexShader(const VertexShader *shader);
+	    void setGeoemetryShader(const GeometryShader *shader);
+
+		void setGeoemetryShaderConstantF(unsigned int index, const float value[4], unsigned int count = 1);
+	    void setGeoemetryShaderConstantI(unsigned int index, const int value[4], unsigned int count = 1);
+	    void setGeoemetryShaderConstantB(unsigned int index, const int *boolean, unsigned int count = 1);
 
 		void setPixelShaderConstantF(unsigned int index, const float value[4], unsigned int count = 1);
 		void setPixelShaderConstantI(unsigned int index, const int value[4], unsigned int count = 1);
@@ -391,6 +397,7 @@ namespace sw
 
 		void loadConstants(const VertexShader *vertexShader);
 		void loadConstants(const PixelShader *pixelShader);
+	    void loadConstants(const GeometryShader *geometryShader);
 
 		Context *context;
 		Clipper *clipper;

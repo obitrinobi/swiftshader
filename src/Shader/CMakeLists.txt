@@ -31,6 +31,7 @@ set(SHADER_SRC_FILES
     VertexProgram.cpp
     VertexRoutine.cpp
     VertexShader.cpp
+	GeometryShader.cpp
     Constants.hpp
     PixelPipeline.hpp
     PixelProgram.hpp
@@ -44,6 +45,7 @@ set(SHADER_SRC_FILES
     VertexProgram.hpp
     VertexRoutine.hpp
     VertexShader.hpp
+	GeometryShader.hpp
 )
 
 add_library(gl_shader EXCLUDE_FROM_ALL

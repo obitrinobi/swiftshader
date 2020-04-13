@@ -19,6 +19,7 @@
 #include "RoutineCache.hpp"
 #include "Shader/VertexShader.hpp"
 #include "Shader/PixelShader.hpp"
+#include "Shader/GeometryShader.hpp"
 #include "Common/Types.hpp"
 
 namespace sw

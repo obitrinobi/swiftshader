@@ -28,6 +28,7 @@ namespace sw
 	class Surface;
 	class PixelShader;
 	class VertexShader;
+    class GeometryShader;
 	struct Triangle;
 	struct Primitive;
 	struct Vertex;
@@ -401,6 +402,7 @@ namespace sw
 
 		unsigned short pixelShaderModel() const;
 		unsigned short vertexShaderModel() const;
+	    unsigned short geometryShaderModel() const;
 
 		int getMultiSampleCount() const;
 		int getSuperSampleCount() const;
@@ -484,6 +486,7 @@ namespace sw
 		// Shaders
 		const PixelShader *pixelShader;
 		const VertexShader *vertexShader;
+	    const GeometryShader *geometryShader;
 
 		// Global mipmap bias
 		float bias;

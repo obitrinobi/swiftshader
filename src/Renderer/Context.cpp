@@ -18,6 +18,7 @@
 #include "Surface.hpp"
 #include "Shader/PixelShader.hpp"
 #include "Shader/VertexShader.hpp"
+#include "Shader/GeometryShader.hpp"
 #include "Common/Memory.hpp"
 #include "Common/Debug.hpp"
 
@@ -302,6 +303,7 @@ namespace sw
 
 		pixelShader = 0;
 		vertexShader = 0;
+	    geometryShader = 0;
 
 		instanceID = 0;
 
@@ -1445,6 +1447,11 @@ namespace sw
 	{
 		return vertexShader ? vertexShader->getShaderModel() : 0x0000;
 	}
+
+	unsigned short Context::geometryShaderModel() const
+    {
+	    return geometryShader ? geometryShader->getShaderModel() : 0x0000;
+    }
 
 	int Context::getMultiSampleCount() const
 	{

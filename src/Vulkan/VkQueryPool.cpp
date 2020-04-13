@@ -192,10 +192,10 @@ void QueryPool::begin(uint32_t query, VkQueryControlFlags flags)
 {
 	ASSERT(query < count);
 
-	if(flags != 0)
+	/* TODO Atanas workaround if(flags != 0)
 	{
 		UNSUPPORTED("vkCmdBeginQuery::flags %d", int(flags));
-	}
+	}*/
 
 	pool[query].prepare(type);
 	pool[query].start();

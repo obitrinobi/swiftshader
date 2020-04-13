@@ -382,6 +382,7 @@ SpirvShader::SpirvShader(
 					case spv::CapabilityDeviceGroup: capabilities.DeviceGroup = true; break;
 					case spv::CapabilityMultiView: capabilities.MultiView = true; break;
 					case spv::CapabilityStencilExportEXT: capabilities.StencilExportEXT = true; break;
+					case spv::CapabilityGeometry: capabilities.Geometry = true; break; 
 					default:
 						UNSUPPORTED("Unsupported capability %u", insn.word(1));
 				}
@@ -886,6 +887,9 @@ void SpirvShader::ProcessExecutionMode(InsnIterator insn)
 			modes.WorkgroupSizeX = insn.word(3);
 			modes.WorkgroupSizeY = insn.word(4);
 			modes.WorkgroupSizeZ = insn.word(5);
+			break;
+		case spv::ExecutionModeTriangles:
+			modes.Triangles = true;
 			break;
 		case spv::ExecutionModeOriginUpperLeft:
 			// This is always the case for a Vulkan shader. Do nothing.
@@ -2410,7 +2414,7 @@ VkShaderStageFlagBits SpirvShader::executionModelToStage(spv::ExecutionModel mod
 		case spv::ExecutionModelVertex: return VK_SHADER_STAGE_VERTEX_BIT;
 		// case spv::ExecutionModelTessellationControl:    return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 		// case spv::ExecutionModelTessellationEvaluation: return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-		// case spv::ExecutionModelGeometry:               return VK_SHADER_STAGE_GEOMETRY_BIT;
+		case spv::ExecutionModelGeometry: return VK_SHADER_STAGE_GEOMETRY_BIT;
 		case spv::ExecutionModelFragment: return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case spv::ExecutionModelGLCompute: return VK_SHADER_STAGE_COMPUTE_BIT;
 		// case spv::ExecutionModelKernel:                 return VkShaderStageFlagBits(0); // Not supported by vulkan.

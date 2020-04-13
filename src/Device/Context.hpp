@@ -96,7 +96,7 @@ public:
 	bool stencilEnable;
 	VkStencilOpState frontStencil;
 	VkStencilOpState backStencil;
-
+	
 	// Pixel processor states
 	VkCullModeFlags cullMode;
 	VkFrontFace frontFace;
@@ -123,6 +123,7 @@ public:
 	// Shaders
 	const SpirvShader *pixelShader;
 	const SpirvShader *vertexShader;
+	const SpirvShader *geometryShader;
 
 	bool occlusionEnabled;
 

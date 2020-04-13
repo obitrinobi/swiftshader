@@ -444,6 +444,11 @@ void GraphicsPipeline::setShader(const VkShaderStageFlagBits &stage, const std::
 			fragmentShader = spirvShader;
 			context.pixelShader = fragmentShader.get();
 			break;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:
+			ASSERT(geometryShader.get() == nullptr);
+			geometryShader = spirvShader;
+			context.geometryShader = geometryShader.get();
+			break;
 
 		default:
 			UNSUPPORTED("Unsupported stage");
@@ -459,6 +464,8 @@ const std::shared_ptr<sw::SpirvShader> GraphicsPipeline::getShader(const VkShade
 			return vertexShader;
 		case VK_SHADER_STAGE_FRAGMENT_BIT:
 			return fragmentShader;
+		case VK_SHADER_STAGE_GEOMETRY_BIT:
+			return geometryShader;
 		default:
 			UNSUPPORTED("Unsupported stage");
 			return fragmentShader;

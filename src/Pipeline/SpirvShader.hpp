@@ -511,6 +511,7 @@ public:
 		bool ContainsKill : 1;
 		bool ContainsControlBarriers : 1;
 		bool NeedsCentroid : 1;
+		bool Triangles : 1;
 
 		// Compute workgroup dimensions
 		int WorkgroupSizeX = 1, WorkgroupSizeY = 1, WorkgroupSizeZ = 1;
@@ -546,6 +547,7 @@ public:
 		bool DeviceGroup : 1;
 		bool MultiView : 1;
 		bool StencilExportEXT : 1;
+		bool Geometry : 1;
 	};
 
 	Capabilities const &getUsedCapabilities() const

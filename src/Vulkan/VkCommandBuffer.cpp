@@ -33,7 +33,7 @@
 #include "marl/defer.h"
 
 #include <cstring>
-
+#include <iostream>
 class vk::CommandBuffer::Command
 {
 public:
@@ -1012,6 +1012,7 @@ public:
 		// since the driver is free to move the source stage towards the bottom of the pipe
 		// and the target stage towards the top, so a full pipeline sync is spec compliant.
 		executionState.renderer->synchronize();
+		std::cout << "end sync" << std::endl;
 
 		// Right now all buffers are read-only in drawcalls but a similar mechanism will be required once we support SSBOs.
 

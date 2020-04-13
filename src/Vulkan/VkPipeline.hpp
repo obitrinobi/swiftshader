@@ -111,7 +111,7 @@ private:
 	const std::shared_ptr<sw::SpirvShader> getShader(const VkShaderStageFlagBits &stage) const;
 	std::shared_ptr<sw::SpirvShader> vertexShader;
 	std::shared_ptr<sw::SpirvShader> fragmentShader;
-
+	std::shared_ptr<sw::SpirvShader> geometryShader;
 	uint32_t dynamicStateFlags = 0;
 	bool primitiveRestartEnable = false;
 	sw::Context context;
