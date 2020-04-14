@@ -21,7 +21,7 @@
 #include "marl/defer.h"
 
 #include <spirv/unified1/spirv.hpp>
-
+#include <iostream>
 namespace sw {
 
 SpirvShader::SpirvShader(
@@ -247,6 +247,8 @@ SpirvShader::SpirvShader(
 				switch(storageClass)
 				{
 					case spv::StorageClassInput:
+						ProcessInterfaceVariable(object);
+						break;
 					case spv::StorageClassOutput:
 						ProcessInterfaceVariable(object);
 						break;
@@ -720,6 +722,12 @@ SpirvShader::SpirvShader(
 				break;
 			}
 
+			case spv::OpEmitVertex:
+				//TODO implement me!
+				break;
+			case spv::OpEndPrimitive:
+				//TODO implement me!
+				break;
 			default:
 				UNSUPPORTED("%s", OpcodeName(opcode).c_str());
 		}
@@ -805,6 +813,10 @@ SpirvShader::Object &SpirvShader::CreateConstant(InsnIterator insn)
 void SpirvShader::ProcessInterfaceVariable(Object &object)
 {
 	auto &objectTy = getType(object.type);
+	if(objectTy.storageClass == spv::StorageClassOutput) 
+	{
+		std::cout << "output" << std::endl;
+	}
 	ASSERT(objectTy.storageClass == spv::StorageClassInput || objectTy.storageClass == spv::StorageClassOutput);
 
 	ASSERT(objectTy.opcode() == spv::OpTypePointer);
@@ -844,7 +856,7 @@ void SpirvShader::ProcessInterfaceVariable(Object &object)
 	{
 		builtinInterface[d->second.BuiltIn] = { resultId, 0, pointeeTy.sizeInComponents };
 	}
-	else
+	else if(d != decorations.end())
 	{
 		object.kind = Object::Kind::InterfaceVariable;
 		VisitInterface(resultId,
@@ -853,7 +865,7 @@ void SpirvShader::ProcessInterfaceVariable(Object &object)
 			               auto scalarSlot = (d.Location << 2) | d.Component;
 			               ASSERT(scalarSlot >= 0 &&
 			                      scalarSlot < static_cast<int32_t>(userDefinedInterface.size()));
-
+			               
 			               auto &slot = userDefinedInterface[scalarSlot];
 			               slot.Type = type;
 			               slot.Flat = d.Flat;
@@ -868,6 +880,10 @@ void SpirvShader::ProcessExecutionMode(InsnIterator insn)
 	auto mode = static_cast<spv::ExecutionMode>(insn.word(2));
 	switch(mode)
 	{
+		case spv::ExecutionModeInvocations:
+			std::cout << "invocations:" << insn.word(3) << std::endl;
+			//  TODO Atanas implement me 
+			break;
 		case spv::ExecutionModeEarlyFragmentTests:
 			modes.EarlyFragmentTests = true;
 			break;
@@ -889,7 +905,15 @@ void SpirvShader::ProcessExecutionMode(InsnIterator insn)
 			modes.WorkgroupSizeZ = insn.word(5);
 			break;
 		case spv::ExecutionModeTriangles:
+			// TODO Atanas implement me 
 			modes.Triangles = true;
+			break;
+		case spv::ExecutionModeOutputLineStrip:
+			// TODO Atanas implement me 
+			break;
+		case spv::ExecutionModeOutputVertices:
+			std::cout << "vertices:" << insn.word(3) << std::endl;
+			// TODO Atanas implement me
 			break;
 		case spv::ExecutionModeOriginUpperLeft:
 			// This is always the case for a Vulkan shader. Do nothing.

@@ -231,10 +231,12 @@ private:
 
 	VertexProcessor::State vertexState;
 	SetupProcessor::State setupState;
+	GeometryProcessor::State geometryState;
 	PixelProcessor::State pixelState;
 
 	VertexProcessor::RoutineType vertexRoutine;
 	SetupProcessor::RoutineType setupRoutine;
+	GeometryProcessor::RoutineType geomeotryRoutine;
 	PixelProcessor::RoutineType pixelRoutine;
 
 	vk::Device *device;
