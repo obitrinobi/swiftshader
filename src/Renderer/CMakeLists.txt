@@ -35,6 +35,7 @@ set(RENDERER_SRC_FILES
     TextureStage.cpp
     Vector.cpp
     VertexProcessor.cpp
+	GeometryProcessor.cpp
     Blitter.hpp
     Clipper.hpp
     Color.hpp
@@ -60,6 +61,7 @@ set(RENDERER_SRC_FILES
     Vector.hpp
     Vertex.hpp
     VertexProcessor.hpp
+	GeometryProcessor.hpp
 )
 
 add_library(gl_renderer EXCLUDE_FROM_ALL

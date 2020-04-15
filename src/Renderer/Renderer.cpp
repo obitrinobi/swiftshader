@@ -30,7 +30,7 @@
 #include "Common/Math.hpp"
 #include "Common/Timer.hpp"
 #include "Common/Debug.hpp"
-
+#include <iostream>
 #undef max
 
 bool disableServer = true;
@@ -142,7 +142,8 @@ namespace sw
 		deallocate(data);
 	}
 
-	Renderer::Renderer(Context *context, Conventions conventions, bool exactColorRounding) : VertexProcessor(context), PixelProcessor(context), SetupProcessor(context), context(context), viewport()
+	Renderer::Renderer(Context *context, Conventions conventions, bool exactColorRounding) : VertexProcessor(context), PixelProcessor(context), SetupProcessor(context), 
+		GeometryProcessor(context), context(context), viewport()
 	{
 		setGlobalRenderingSettings(conventions, exactColorRounding);
 
@@ -2243,6 +2244,51 @@ namespace sw
 		}
 	}
 
+	void Renderer::loadConstants(const GeometryShader *geometryShader)
+    {
+	    if(!geometryShader) return;
+
+	    size_t count = geometryShader->getLength();
+
+	    for(size_t i = 0; i < count; i++)
+	    {
+		    const Shader::Instruction *instruction = geometryShader->getInstruction(i);
+
+		    if(instruction->opcode == Shader::OPCODE_DEF)
+		    {
+			    int index = instruction->dst.index;
+			    float value[4];
+
+			    value[0] = instruction->src[0].value[0];
+			    value[1] = instruction->src[0].value[1];
+			    value[2] = instruction->src[0].value[2];
+			    value[3] = instruction->src[0].value[3];
+
+			    setGeometryShaderConstantF(index, value);
+		    }
+		    else if(instruction->opcode == Shader::OPCODE_DEFI)
+		    {
+			    int index = instruction->dst.index;
+			    int integer[4];
+
+			    integer[0] = instruction->src[0].integer[0];
+			    integer[1] = instruction->src[0].integer[1];
+			    integer[2] = instruction->src[0].integer[2];
+			    integer[3] = instruction->src[0].integer[3];
+
+			    setGeometryShaderConstantI(index, integer);
+		    }
+		    else if(instruction->opcode == Shader::OPCODE_DEFB)
+		    {
+			    int index = instruction->dst.index;
+			    int boolean = instruction->src[0].boolean[0];
+
+			   setGeometryShaderConstantB(index, &boolean);
+		    }
+	    }
+    }
+
+
 	void Renderer::loadConstants(const PixelShader *pixelShader)
 	{
 		if(!pixelShader) return;
@@ -2655,9 +2701,17 @@ namespace sw
 	void Renderer::setVertexShader(const VertexShader *shader)
 	{
 		context->vertexShader = shader;
+	    std::cout << "renderer set vertex sh" << std::endl;
 
 		loadConstants(shader);
 	}
+
+	void Renderer::setGeometryShader(const GeometryShader *shader)
+    {
+	    context->geometryShader = shader;
+
+	    loadConstants(shader);
+    }
 
 	void Renderer::setPixelShaderConstantF(unsigned int index, const float value[4], unsigned int count)
 	{
@@ -2760,6 +2814,57 @@ namespace sw
 			boolean++;
 		}
 	}
+
+	void Renderer::setGeometryShaderConstantF(unsigned int index, const float value[4], unsigned int count)
+    {
+	    for(unsigned int i = 0; i < DRAW_COUNT; i++)
+	    {
+		    if(drawCall[i]->gsDirtyConstF < index + count)
+		    {
+			    drawCall[i]->gsDirtyConstF = index + count;
+		    }
+	    }
+
+	    for(unsigned int i = 0; i < count; i++)
+	    {
+		    GeometryProcessor::setFloatConstant(index + i, value);
+		    value += 4;
+	    }
+    }
+
+	void Renderer::setGeometryShaderConstantI(unsigned int index, const int value[4], unsigned int count)
+    {
+	    for(unsigned int i = 0; i < DRAW_COUNT; i++)
+	    {
+		    if(drawCall[i]->gsDirtyConstI < index + count)
+		    {
+			    drawCall[i]->gsDirtyConstI = index + count;
+		    }
+	    }
+
+	    for(unsigned int i = 0; i < count; i++)
+	    {
+		    GeometryProcessor::setIntegerConstant(index + i, value);
+		    value += 4;
+	    }
+    }
+
+    void Renderer::setGeometryShaderConstantB(unsigned int index, const int *boolean, unsigned int count)
+    {
+	    for(unsigned int i = 0; i < DRAW_COUNT; i++)
+	    {
+		    if(drawCall[i]->gsDirtyConstB < index + count)
+		    {
+			    drawCall[i]->gsDirtyConstB = index + count;
+		    }
+	    }
+
+	    for(unsigned int i = 0; i < count; i++)
+	    {
+		    GeometryProcessor::setBooleanConstant(index + i, *boolean);
+		    boolean++;
+	    }
+    }
 
 	void Renderer::setModelMatrix(const Matrix &M, int i)
 	{

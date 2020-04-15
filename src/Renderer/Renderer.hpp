@@ -17,6 +17,7 @@
 
 #include "VertexProcessor.hpp"
 #include "PixelProcessor.hpp"
+#include "GeometryProcessor.hpp"
 #include "SetupProcessor.hpp"
 #include "Plane.hpp"
 #include "Blitter.hpp"
@@ -221,7 +222,7 @@ namespace sw
 		float maxZ;
 	};
 
-	class Renderer : public VertexProcessor, public PixelProcessor, public SetupProcessor
+	class Renderer : public VertexProcessor, public PixelProcessor, public SetupProcessor, public GeometryProcessor
 	{
 		struct Task
 		{
@@ -327,11 +328,11 @@ namespace sw
 		// Programmable pipelines
 		void setPixelShader(const PixelShader *shader);
 		void setVertexShader(const VertexShader *shader);
-	    void setGeoemetryShader(const GeometryShader *shader);
+	    void setGeometryShader(const GeometryShader *shader);
 
-		void setGeoemetryShaderConstantF(unsigned int index, const float value[4], unsigned int count = 1);
-	    void setGeoemetryShaderConstantI(unsigned int index, const int value[4], unsigned int count = 1);
-	    void setGeoemetryShaderConstantB(unsigned int index, const int *boolean, unsigned int count = 1);
+		void setGeometryShaderConstantF(unsigned int index, const float value[4], unsigned int count = 1);
+	    void setGeometryShaderConstantI(unsigned int index, const int value[4], unsigned int count = 1);
+	    void setGeometryShaderConstantB(unsigned int index, const int *boolean, unsigned int count = 1);
 
 		void setPixelShaderConstantF(unsigned int index, const float value[4], unsigned int count = 1);
 		void setPixelShaderConstantI(unsigned int index, const int value[4], unsigned int count = 1);
@@ -503,6 +504,10 @@ namespace sw
 		unsigned int vsDirtyConstF;
 		unsigned int vsDirtyConstI;
 		unsigned int vsDirtyConstB;
+
+		unsigned int gsDirtyConstF;
+	    unsigned int gsDirtyConstI;
+	    unsigned int gsDirtyConstB;
 
 		unsigned int psDirtyConstF;
 		unsigned int psDirtyConstI;

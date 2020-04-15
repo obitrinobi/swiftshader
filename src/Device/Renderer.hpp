@@ -20,6 +20,7 @@
 #include "Primitive.hpp"
 #include "SetupProcessor.hpp"
 #include "VertexProcessor.hpp"
+#include "GeometryProcessor.hpp"
 #include "Device/Config.hpp"
 #include "Vulkan/VkDescriptorSet.hpp"
 
@@ -156,6 +157,7 @@ struct DrawCall
 
 	VertexProcessor::RoutineType vertexRoutine;
 	SetupProcessor::RoutineType setupRoutine;
+	GeometryProcessor::RoutineType geometryRoutine;
 	PixelProcessor::RoutineType pixelRoutine;
 
 	SetupFunction setupPrimitives;
@@ -189,7 +191,7 @@ struct DrawCall
 	static bool setupPoint(Primitive &primitive, Triangle &triangle, const DrawCall &draw);
 };
 
-class alignas(16) Renderer : public VertexProcessor, public PixelProcessor, public SetupProcessor
+class alignas(16) Renderer : public VertexProcessor, public PixelProcessor, public SetupProcessor, public GeometryProcessor
 {
 public:
 	Renderer(vk::Device *device);
@@ -230,13 +232,14 @@ private:
 	marl::Ticket::Queue clusterQueues[MaxClusterCount];
 
 	VertexProcessor::State vertexState;
-	SetupProcessor::State setupState;
 	GeometryProcessor::State geometryState;
+	SetupProcessor::State setupState;
+	//TODO implement me GeometryProcessor::State geometryState;
 	PixelProcessor::State pixelState;
 
 	VertexProcessor::RoutineType vertexRoutine;
 	SetupProcessor::RoutineType setupRoutine;
-	GeometryProcessor::RoutineType geomeotryRoutine;
+	GeometryProcessor::RoutineType geometryRoutine;
 	PixelProcessor::RoutineType pixelRoutine;
 
 	vk::Device *device;

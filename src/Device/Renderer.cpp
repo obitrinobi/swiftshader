@@ -157,6 +157,7 @@ Renderer::Renderer(vk::Device *device)
     : device(device)
 {
 	VertexProcessor::setRoutineCacheSize(1024);
+	GeometryProcessor::setRoutineCacheSize(1024);
 	PixelProcessor::setRoutineCacheSize(1024);
 	SetupProcessor::setRoutineCacheSize(1024);
 }
@@ -205,10 +206,12 @@ void Renderer::draw(const sw::Context *context, VkIndexType indexType, unsigned 
 	{
 		MARL_SCOPED_EVENT("update");
 		vertexState = VertexProcessor::update(context);
+		geometryState = GeometryProcessor::update(context);
 		setupState = SetupProcessor::update(context);
 		pixelState = PixelProcessor::update(context);
 
 		vertexRoutine = VertexProcessor::routine(vertexState, context->pipelineLayout, context->vertexShader, context->descriptorSets);
+		geometryRoutine = GeometryProcessor::routine(geometryState, context->pipelineLayout, context->geometryShader, context->descriptorSets);
 		setupRoutine = SetupProcessor::routine(setupState);
 		pixelRoutine = PixelProcessor::routine(pixelState, context->pipelineLayout, context->pixelShader, context->descriptorSets);
 	}
@@ -258,6 +261,7 @@ void Renderer::draw(const sw::Context *context, VkIndexType indexType, unsigned 
 
 	draw->vertexRoutine = vertexRoutine;
 	draw->setupRoutine = setupRoutine;
+	draw->geometryRoutine = geometryRoutine;
 	draw->pixelRoutine = pixelRoutine;
 	draw->setupPrimitives = setupPrimitives;
 	draw->setupState = setupState;
@@ -422,6 +426,7 @@ void DrawCall::teardown()
 	}
 
 	vertexRoutine = {};
+	geometryRoutine = {};
 	setupRoutine = {};
 	pixelRoutine = {};
 }

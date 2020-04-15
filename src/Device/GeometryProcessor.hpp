@@ -14,13 +14,70 @@
 
 #ifndef sw_GeometryProcessor_hpp
 #define sw_GeometryProcessor_hpp
+
+#include "Context.hpp"
+#include "Memset.hpp"
+#include "RoutineCache.hpp"
+#include "Pipeline/SpirvShader.hpp"
+
+
 namespace sw {
+struct DrawData;
+struct VertexTask;
+struct Vertex;
+
+using GeometryRoutineFunction = FunctionT<void(Vertex *output, unsigned int *batch, VertexTask *vertextask, DrawData *draw)>;
 
 class GeometryProcessor
 {
 public:	
+	struct States : Memset<States>
+	{
+		States()
+		    : Memset(this, 0)
+		{}
+
+		uint32_t computeHash();
+
+		uint64_t shaderID;
+
+		struct Input
+		{
+			operator bool() const  // Returns true if stream contains data
+			{
+				return format != VK_FORMAT_UNDEFINED;
+			}
+
+			VkFormat format;  // TODO(b/148016460): Could be restricted to VK_FORMAT_END_RANGE
+			unsigned int attribType : BITS(SpirvShader::ATTRIBTYPE_LAST);
+		};
+
+		Input input[MAX_INTERFACE_COMPONENTS / 4];
+		bool robustBufferAccess : 1;
+		bool isPoint : 1;
+	};
+	struct State : States
+	{
+		bool operator==(const State &state) const;
+
+		uint32_t hash;
+	};
 	GeometryProcessor();
 	virtual ~GeometryProcessor();
+	using RoutineType = GeometryRoutineFunction::RoutineType;
+
+	
+
+protected:
+	const State update(const sw::Context *context);
+	RoutineType routine(const State &state, vk::PipelineLayout const *pipelineLayout,
+	                    SpirvShader const *vertexShader, const vk::DescriptorSet::Bindings &descriptorSets);
+	void setRoutineCacheSize(int cacheSize);
+
+private:
+	// TODO implement
+	// using RoutineCacheType = RoutineCacheT<State, VertexRoutineFunction::CFunctionType>;
+	// RoutineCacheType *routineCache;
 };
 
 }  // namespace sw

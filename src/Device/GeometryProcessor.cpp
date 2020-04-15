@@ -13,8 +13,23 @@
 // limitations under the License.
 
 #include "GeometryProcessor.hpp"
+#include "Pipeline/GeometryRoutine.hpp"
+#include "Pipeline/GeometryProgram.hpp"
 
 namespace sw {
+
+uint32_t GeometryProcessor::States::computeHash()
+{
+	uint32_t *state = reinterpret_cast<uint32_t *>(this);
+	uint32_t hash = 0;
+
+	for(unsigned int i = 0; i < sizeof(States) / sizeof(uint32_t); i++)
+	{
+		hash ^= state[i];
+	}
+
+	return hash;
+}
 
 GeometryProcessor::GeometryProcessor()
 {
@@ -22,6 +37,55 @@ GeometryProcessor::GeometryProcessor()
 
 GeometryProcessor::~GeometryProcessor()
 {
+}
+
+void GeometryProcessor::setRoutineCacheSize(int cacheSize) 
+{
+	//TODO imlement me
+}
+
+const GeometryProcessor::State GeometryProcessor::update(const sw::Context *context)
+{
+	State state;
+
+	if(context->geometryShader) 
+	{
+		state.shaderID = context->geometryShader->getSerialID();
+		state.robustBufferAccess = context->robustBufferAccess;
+		state.isPoint = context->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+		for(int i = 0; i < MAX_INTERFACE_COMPONENTS / 4; i++)
+		{
+			state.input[i].format = context->input[i].format;
+			// TODO: get rid of attribType -- just keep the VK format all the way through, this fully determines
+			// how to handle the attribute.
+			//state.input[i].attribType = context->vertexShader->inputs[i * 4].Type;
+		}
+	}
+	state.hash = state.computeHash();
+
+	return state;
+}
+
+GeometryProcessor::RoutineType GeometryProcessor::routine(const State &state,
+                                                      vk::PipelineLayout const *pipelineLayout,
+                                                      SpirvShader const *geometryShader,
+                                                      const vk::DescriptorSet::Bindings &descriptorSets)
+{
+	// TODO fix me auto routine = routineCache->query(state);
+	//auto routine = nullptr;
+	//if(geometryShader)  // Create one
+	//{
+		GeometryRoutine *generator = new GeometryProgram(state, pipelineLayout, geometryShader, descriptorSets);
+		generator->generate();
+		auto routine = (*generator)("GeometryRoutine_%0.8X", state.shaderID);
+	
+		delete generator;
+
+		//routineCache->add(state, routine);
+	//}
+
+	return routine;
 }
 
 }
