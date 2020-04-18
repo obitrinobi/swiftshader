@@ -1685,7 +1685,10 @@ SpirvShader::EmitResult SpirvShader::EmitInstruction(InsnIterator insn, EmitStat
 
 		case spv::OpLine:
 			return EmitLine(insn, state);
-
+		case spv::OpEmitVertex:
+			return EmitResult::Continue;
+		case spv::OpEndPrimitive:
+			return EmitResult::Continue;
 		case spv::OpLabel:
 			return EmitResult::Continue;
 

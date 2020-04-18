@@ -71,10 +71,10 @@ private:
 
 	typedef GeometryProcessor::State::Input Stream;
 
-	/*Vector4f readStream(Pointer<Byte> &buffer, UInt &stride, const Stream &stream, Pointer<UInt> &batch,
-	                    bool robustBufferAccess, UInt &robustnessSize, Int baseVertex);
 	void readInput(Pointer<UInt> &batch);
-	void computeClipFlags();
+	Vector4f readStream(Pointer<Byte> &buffer, UInt &stride, const Stream &stream, Pointer<UInt> &batch,
+	                    bool robustBufferAccess, UInt &robustnessSize, Int baseVertex);
+	/*	void computeClipFlags();
 	void computeCullMask();
 	void writeCache(Pointer<Byte> &vertexCache, Pointer<UInt> &tagCache, Pointer<UInt> &batch);
 	void writeVertex(const Pointer<Byte> &vertex, Pointer<Byte> &cacheEntry);*/
