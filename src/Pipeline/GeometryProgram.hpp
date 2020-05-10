@@ -34,7 +34,7 @@ public:
 	virtual ~GeometryProgram();
 
 private:
-	void program(Pointer<UInt> &batch, UInt &vertexCount) override;
+	void program(Pointer<Byte> &vertices) override;
 
 	const vk::DescriptorSet::Bindings &descriptorSets;
 };

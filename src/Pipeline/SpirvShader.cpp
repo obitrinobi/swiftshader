@@ -38,6 +38,7 @@ SpirvShader::SpirvShader(
     , outputs{ MAX_INTERFACE_COMPONENTS }
     , codeSerialID(codeSerialID)
     , robustBufferAccess(robustBufferAccess)
+    , outputVertices(0)
 {
 	ASSERT(insns.size() > 0);
 
@@ -384,7 +385,7 @@ SpirvShader::SpirvShader(
 					case spv::CapabilityDeviceGroup: capabilities.DeviceGroup = true; break;
 					case spv::CapabilityMultiView: capabilities.MultiView = true; break;
 					case spv::CapabilityStencilExportEXT: capabilities.StencilExportEXT = true; break;
-					case spv::CapabilityGeometry: capabilities.Geometry = true; break; 
+					case spv::CapabilityGeometry: capabilities.Geometry = true; break;
 					default:
 						UNSUPPORTED("Unsupported capability %u", insn.word(1));
 				}
@@ -448,6 +449,8 @@ SpirvShader::SpirvShader(
 				break;
 			}
 			case spv::OpName:
+				objectNames.emplace(insn.string(2), insn.word(1));
+				break;
 			case spv::OpMemberName:
 			case spv::OpSource:
 			case spv::OpSourceContinued:
@@ -813,7 +816,7 @@ SpirvShader::Object &SpirvShader::CreateConstant(InsnIterator insn)
 void SpirvShader::ProcessInterfaceVariable(Object &object)
 {
 	auto &objectTy = getType(object.type);
-	if(objectTy.storageClass == spv::StorageClassOutput) 
+	if(objectTy.storageClass == spv::StorageClassOutput)
 	{
 		std::cout << "output" << std::endl;
 	}
@@ -865,7 +868,7 @@ void SpirvShader::ProcessInterfaceVariable(Object &object)
 			               auto scalarSlot = (d.Location << 2) | d.Component;
 			               ASSERT(scalarSlot >= 0 &&
 			                      scalarSlot < static_cast<int32_t>(userDefinedInterface.size()));
-			               
+
 			               auto &slot = userDefinedInterface[scalarSlot];
 			               slot.Type = type;
 			               slot.Flat = d.Flat;
@@ -882,7 +885,7 @@ void SpirvShader::ProcessExecutionMode(InsnIterator insn)
 	{
 		case spv::ExecutionModeInvocations:
 			std::cout << "invocations:" << insn.word(3) << std::endl;
-			//  TODO Atanas implement me 
+			//  TODO Atanas implement me
 			break;
 		case spv::ExecutionModeEarlyFragmentTests:
 			modes.EarlyFragmentTests = true;
@@ -905,15 +908,14 @@ void SpirvShader::ProcessExecutionMode(InsnIterator insn)
 			modes.WorkgroupSizeZ = insn.word(5);
 			break;
 		case spv::ExecutionModeTriangles:
-			// TODO Atanas implement me 
+			// TODO Atanas implement me
 			modes.Triangles = true;
 			break;
 		case spv::ExecutionModeOutputLineStrip:
-			// TODO Atanas implement me 
+			// TODO Atanas implement me
 			break;
 		case spv::ExecutionModeOutputVertices:
-			std::cout << "vertices:" << insn.word(3) << std::endl;
-			// TODO Atanas implement me
+			outputVertices = insn.word(3);
 			break;
 		case spv::ExecutionModeOriginUpperLeft:
 			// This is always the case for a Vulkan shader. Do nothing.
@@ -1686,7 +1688,7 @@ SpirvShader::EmitResult SpirvShader::EmitInstruction(InsnIterator insn, EmitStat
 		case spv::OpLine:
 			return EmitLine(insn, state);
 		case spv::OpEmitVertex:
-			return EmitResult::Continue;
+			return EmitVertex(state);
 		case spv::OpEndPrimitive:
 			return EmitResult::Continue;
 		case spv::OpLabel:
@@ -2431,6 +2433,7 @@ void SpirvShader::emitEpilog(SpirvRoutine *routine) const
 	// (1) The phi rr::Variables are destructed, preventing pointless
 	//     materialization.
 	// (2) Frees memory that will never be used again.
+	routine->counter = 0;
 	routine->phis.clear();
 }
 
@@ -2467,6 +2470,7 @@ SpirvShader::Operand::Operand(SpirvShader const *shader, EmitState const *state,
 
 SpirvRoutine::SpirvRoutine(vk::PipelineLayout const *pipelineLayout)
     : pipelineLayout(pipelineLayout)
+    , counter(0)
 {
 }
 

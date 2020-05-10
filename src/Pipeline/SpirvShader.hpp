@@ -20,12 +20,12 @@
 #include "SpirvID.hpp"
 #include "Device/Config.hpp"
 #include "Device/Sampler.hpp"
+#include "Device/Vertex.hpp"
 #include "System/Debug.hpp"
 #include "System/Math.hpp"
 #include "System/Types.hpp"
 #include "Vulkan/VkConfig.h"
 #include "Vulkan/VkDescriptorSet.hpp"
-
 #include <spirv/unified1/spirv.hpp>
 
 #include <array>
@@ -550,6 +550,11 @@ public:
 		bool Geometry : 1;
 	};
 
+	unsigned int getNumberOfOutputVertices() const 
+	{
+		return outputVertices;
+	}
+
 	Capabilities const &getUsedCapabilities() const
 	{
 		return capabilities;
@@ -603,6 +608,17 @@ public:
 	bool hasBuiltinOutput(spv::BuiltIn b) const
 	{
 		return outputBuiltins.find(b) != outputBuiltins.end();
+	}
+
+	bool hasVariable(std::string objectName) const
+	{
+		return (objectNames.find(objectName) != objectNames.end());
+	}
+
+	Object::ID getObjectId(std::string objectName) const
+	{
+		auto it = objectNames.find(objectName);
+		return it->second;
 	}
 
 	struct Decorations
@@ -665,7 +681,7 @@ public:
 
 	std::unordered_map<TypeOrObjectID, Decorations, TypeOrObjectID::Hash> decorations;
 	std::unordered_map<Type::ID, std::vector<Decorations>> memberDecorations;
-
+	std::unordered_map<std::string, Object::ID> objectNames;
 	struct DescriptorDecorations
 	{
 		int32_t DescriptorSet = -1;
@@ -759,7 +775,8 @@ private:
 
 	const bool robustBufferAccess = true;
 	spv::ExecutionModel executionModel = spv::ExecutionModelMax;  // Invalid prior to OpEntryPoint parsing.
-
+	unsigned int outputVertices;
+	
 	// DeclareType creates a Type for the given OpTypeX instruction, storing
 	// it into the types map. It is called from the analysis pass (constructor).
 	void DeclareType(InsnIterator insn);
@@ -879,6 +896,10 @@ private:
 			ASSERT(executionModelToStage(executionModel) != VkShaderStageFlagBits(0));  // Must parse OpEntryPoint before emitting.
 		}
 
+		spv::ExecutionModel getExecutionModel() const
+		{
+			return executionModel;
+		}
 		RValue<SIMD::Int> activeLaneMask() const
 		{
 			ASSERT(activeLaneMaskValue != nullptr);
@@ -1083,6 +1104,7 @@ private:
 	EmitResult EmitVariable(InsnIterator insn, EmitState *state) const;
 	EmitResult EmitLoad(InsnIterator insn, EmitState *state) const;
 	EmitResult EmitStore(InsnIterator insn, EmitState *state) const;
+	EmitResult EmitVertex(EmitState *state) const;
 	EmitResult EmitAccessChain(InsnIterator insn, EmitState *state) const;
 	EmitResult EmitCompositeConstruct(InsnIterator insn, EmitState *state) const;
 	EmitResult EmitCompositeInsert(InsnIterator insn, EmitState *state) const;
@@ -1263,6 +1285,7 @@ public:
 	std::unordered_map<SpirvShader::Object::ID, SamplerCache> samplerCache;
 	Variable inputs = Variable{ MAX_INTERFACE_COMPONENTS };
 	Variable outputs = Variable{ MAX_INTERFACE_COMPONENTS };
+	Variable buildInOutputs = Variable{ MAX_INTERFACE_COMPONENTS };
 
 	Pointer<Byte> workgroupMemory;
 	Pointer<Pointer<Byte>> descriptorSets;
@@ -1289,6 +1312,7 @@ public:
 	Int subgroupsPerWorkgroup;
 	Int invocationsPerSubgroup;
 	Int subgroupIndex;
+	Int counter;
 	SIMD::Int localInvocationIndex;
 	std::array<SIMD::Int, 3> localInvocationID;
 	std::array<SIMD::Int, 3> globalInvocationID;

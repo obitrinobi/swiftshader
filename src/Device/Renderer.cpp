@@ -36,6 +36,8 @@
 #include "marl/defer.h"
 #include "marl/trace.h"
 
+#include <iostream>
+
 #undef max
 
 #ifndef NDEBUG
@@ -146,6 +148,8 @@ DrawCall::DrawCall()
 {
 	data = (DrawData *)allocate(sizeof(DrawData));
 	data->constants = &constants;
+	numEmittedPrimitives = 0;
+	numEmittedVertices = 0;
 }
 
 DrawCall::~DrawCall()
@@ -217,10 +221,19 @@ void Renderer::draw(const sw::Context *context, VkIndexType indexType, unsigned 
 	}
 
 	DrawCall::SetupFunction setupPrimitives = nullptr;
+	DrawCall::GeometryFunction geometryShader = nullptr;
 	unsigned int numPrimitivesPerBatch = MaxBatchSize / ms;
+
+	if(context->geometryShader)
+	{
+		// TODO make generic
+		draw->numEmittedPrimitives = context->geometryShader->getNumberOfOutputVertices() / 2;
+		draw->numEmittedVertices = context->geometryShader->getNumberOfOutputVertices();
+	}
 
 	if(context->isDrawTriangle(false))
 	{
+		geometryShader = &DrawCall::geometryRoutineTriangles;
 		switch(context->polygonMode)
 		{
 			case VK_POLYGON_MODE_FILL:
@@ -264,6 +277,7 @@ void Renderer::draw(const sw::Context *context, VkIndexType indexType, unsigned 
 	draw->geometryRoutine = geometryRoutine;
 	draw->pixelRoutine = pixelRoutine;
 	draw->setupPrimitives = setupPrimitives;
+	draw->geometryShader = geometryShader;
 	draw->setupState = setupState;
 
 	data->descriptorSets = context->descriptorSets;
@@ -438,7 +452,8 @@ void DrawCall::run(const marl::Loan<DrawCall> &draw, marl::Ticket::Queue *ticket
 	auto const numPrimitives = draw->numPrimitives;
 	auto const numPrimitivesPerBatch = draw->numPrimitivesPerBatch;
 	auto const numBatches = draw->numBatches;
-
+	auto const numEmittedPrimitives = draw->numEmittedPrimitives;
+	auto const numEmittedVertices = draw->numEmittedVertices;
 	auto ticket = tickets->take();
 	auto finally = marl::make_shared_finally([draw, ticket] {
 		MARL_SCOPED_EVENT("FINISH draw %d", draw->id);
@@ -452,15 +467,15 @@ void DrawCall::run(const marl::Loan<DrawCall> &draw, marl::Ticket::Queue *ticket
 		batch->id = batchId;
 		batch->firstPrimitive = batch->id * numPrimitivesPerBatch;
 		batch->numPrimitives = std::min(batch->firstPrimitive + numPrimitivesPerBatch, numPrimitives) - batch->firstPrimitive;
-
+		batch->numEmittedPrimitives = draw->numEmittedPrimitives;
 		for(int cluster = 0; cluster < MaxClusterCount; cluster++)
 		{
 			batch->clusterTickets[cluster] = std::move(clusterQueues[cluster].take());
 		}
 
-		marl::schedule([draw, batch, finally] {
+		marl::schedule([draw, batch, numEmittedVertices, numEmittedPrimitives, finally] {
 			processVertices(draw.get(), batch.get());
-
+			processGeometryShader(draw.get(), batch.get(), numEmittedVertices, numEmittedPrimitives);
 			if(!draw->setupState.rasterizerDiscard)
 			{
 				processPrimitives(draw.get(), batch.get());
@@ -510,12 +525,34 @@ void DrawCall::processVertices(DrawCall *draw, BatchData *batch)
 	draw->vertexRoutine(&batch->triangles.front().v0, &triangleIndices[0][0], &vertexTask, draw->data);
 }
 
+void DrawCall::processGeometryShader(DrawCall *draw, BatchData *batch, const unsigned int vertices, const unsigned int primitives)
+{
+	if(draw->geometryShader)
+	{
+		auto &geometryTask = batch->geometryTask;
+		geometryTask.trianglesCount = batch->numPrimitives;
+		geometryTask.vertices = vertices;
+		geometryTask.primitives = primitives;
+
+		auto triangles = &batch->triangles[0];
+		auto emittedTriangles = &batch->emittedTriangles[0];
+		//TODO fix based on output mode triangles or lines
+		//batch->numPrimitives, vertices, primitives
+		draw->geometryShader(triangles, emittedTriangles, &geometryTask, draw);
+	}
+}
+
 void DrawCall::processPrimitives(DrawCall *draw, BatchData *batch)
 {
 	MARL_SCOPED_EVENT("PRIMITIVES draw %d batch %d", draw->id, batch->id);
 	auto triangles = &batch->triangles[0];
 	auto primitives = &batch->primitives[0];
+	auto emittedTriangles = &batch->emittedTriangles[0];
+	auto emittedPrimitives = &batch->emittedPrimitives[0];
+
 	batch->numVisible = draw->setupPrimitives(triangles, primitives, draw, batch->numPrimitives);
+	if(batch->numEmittedPrimitives > 0)
+		batch->numEmittedVisible = draw->setupPrimitives(emittedTriangles, emittedPrimitives, draw, batch->numPrimitives * batch->numEmittedPrimitives);
 }
 
 void DrawCall::processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally)
@@ -539,6 +576,9 @@ void DrawCall::processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<
 			auto &batch = data->batch;
 			MARL_SCOPED_EVENT("PIXEL draw %d, batch %d, cluster %d", draw->id, batch->id, cluster);
 			draw->pixelRoutine(&batch->primitives.front(), batch->numVisible, cluster, MaxClusterCount, draw->data);
+			if(batch->numEmittedVisible > 0)
+				draw->pixelRoutine(&batch->emittedPrimitives.front(), batch->numEmittedVisible, cluster, MaxClusterCount, draw->data);
+
 			batch->clusterTickets[cluster].done();
 		});
 	}
@@ -604,6 +644,28 @@ void DrawCall::processPrimitiveVertices(
 		triangleIndicesOut[triangleCount][0] = triangleIndicesOut[triangleCount - 1][2];
 		triangleIndicesOut[triangleCount][1] = triangleIndicesOut[triangleCount - 1][2];
 		triangleIndicesOut[triangleCount][2] = triangleIndicesOut[triangleCount - 1][2];
+	}
+}
+
+void DrawCall::geometryRoutineTriangles(Triangle *triangles, Triangle *emittedTriangles, GeometryTask *task, const DrawCall *drawCall)
+{
+
+	/*std::cout << "calling geometry shader" << std::endl;
+		std::cout << "V0:[" << triangles->v0.x << "," << triangles->v0.y << "," << triangles->v0.z << "]" << std::endl;
+		std::cout << "V1:[" << triangles->v1.x << "," << triangles->v1.y << "," << triangles->v1.z << "]" << std::endl;
+		std::cout << "V2:[" << triangles->v2.x << "," << triangles->v2.y << "," << triangles->v2.z << "]" << std::endl;
+		std::cout << "V0 normal:[" << triangles->v0.v[0] << "," << triangles->v0.v[1] << "," << triangles->v0.v[2] << "]" << std::endl;
+		std::cout << "V1 normal:[" << triangles->v1.v[0] << "," << triangles->v1.v[1] << "," << triangles->v1.v[2] << "]" << std::endl;
+		std::cout << "V2 normal:[" << triangles->v2.v[0] << "," << triangles->v2.v[1] << "," << triangles->v2.v[2] << "]" << std::endl;
+		*/
+	DrawData *data = drawCall->data;
+	//drawCall->geometryRoutine(triangles, emittedTriangles, task, data);
+
+	for(unsigned int i = 0; i < task->trianglesCount; i++, emittedTriangles++) 
+	{
+		std::cout << "V0:[" << emittedTriangles->v0.x << "," << emittedTriangles->v0.y << "," << emittedTriangles->v0.z << "]" << std::endl;
+		std::cout << "V1:[" << emittedTriangles->v1.x << "," << emittedTriangles->v1.y << "," << emittedTriangles->v1.z << "]" << std::endl;
+		std::cout << "V2:[" << emittedTriangles->v2.x << "," << emittedTriangles->v2.y << "," << emittedTriangles->v2.z << "]" << std::endl;			
 	}
 }
 

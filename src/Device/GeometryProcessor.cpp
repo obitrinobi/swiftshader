@@ -59,7 +59,7 @@ const GeometryProcessor::State GeometryProcessor::update(const sw::Context *cont
 			state.input[i].format = context->input[i].format;
 			// TODO: get rid of attribType -- just keep the VK format all the way through, this fully determines
 			// how to handle the attribute.
-			//state.input[i].attribType = context->vertexShader->inputs[i * 4].Type;
+			state.input[i].attribType = context->geometryShader->inputs[i * 4].Type;
 		}
 	}
 	state.hash = state.computeHash();

@@ -30,16 +30,16 @@ class GeometryRoutinePrototype : public GeometryRoutineFunction
 {
 public:
 	GeometryRoutinePrototype()
-	    : vertex(Arg<0>())
-	    , batch(Arg<1>())
+	    : triangles(Arg<0>()) 
+		, emittedTriangles(Arg<1>())
 	    , task(Arg<2>())
 	    , data(Arg<3>())
 	{}
 	virtual ~GeometryRoutinePrototype() {}
 
 protected:
-	Pointer<Byte> vertex;
-	Pointer<UInt> batch;
+	Pointer<Byte> triangles;
+	Pointer<Byte> emittedTriangles;
 	Pointer<Byte> task;
 	Pointer<Byte> data;
 };
@@ -67,13 +67,12 @@ protected:
 	SpirvShader const *const spirvShader;
 
 private:
-	virtual void program(Pointer<UInt> &batch, UInt &vertexCount) = 0;
+	virtual void program(Pointer<Byte> &triangles) = 0;
 
 	typedef GeometryProcessor::State::Input Stream;
 
-	void readInput(Pointer<UInt> &batch);
-	Vector4f readStream(Pointer<Byte> &buffer, UInt &stride, const Stream &stream, Pointer<UInt> &batch,
-	                    bool robustBufferAccess, UInt &robustnessSize, Int baseVertex);
+	void readInputPrimitive(Pointer<Byte> &triangles, UInt index);
+	void writePrimitives(Pointer<Byte> &primitives, UInt index);
 	/*	void computeClipFlags();
 	void computeCullMask();
 	void writeCache(Pointer<Byte> &vertexCache, Pointer<UInt> &tagCache, Pointer<UInt> &batch);

@@ -20,6 +20,8 @@
 
 #include <spirv/unified1/spirv.hpp>
 
+#include "device/Vertex.hpp"
+
 namespace sw {
 
 SpirvShader::EmitResult SpirvShader::EmitLoad(InsnIterator insn, EmitState *state) const
@@ -66,6 +68,34 @@ SpirvShader::EmitResult SpirvShader::EmitLoad(InsnIterator insn, EmitState *stat
 	return EmitResult::Continue;
 }
 
+SpirvShader::EmitResult SpirvShader::EmitVertex(EmitState *state) const
+{
+	SIMD::Int mask = state->activeLaneMask();
+	mask = mask & state->storesAndAtomicsMask();
+	auto it = outputBuiltins.find(spv::BuiltInPosition);
+	assert(it != outputBuiltins.end());
+	assert(it->second.SizeInComponents == 4);
+	auto routine = state->routine;
+
+	auto &pos = routine->getVariable(it->second.Id);
+	auto anyLanesEnabled = AnyTrue(mask);
+			
+	If(anyLanesEnabled)
+	{
+		Vector4f v;
+		v.x = pos[it->second.FirstComponent + 0];
+		v.y = pos[it->second.FirstComponent + 1];
+		v.z = pos[it->second.FirstComponent + 2];
+		v.w = pos[it->second.FirstComponent + 3];
+
+		routine->buildInOutputs[routine->counter++] = v.x;
+		routine->buildInOutputs[routine->counter++] = v.y;
+		routine->buildInOutputs[routine->counter++] = v.z;
+		routine->buildInOutputs[routine->counter++] = v.w;
+	}
+	return EmitResult::Continue;
+}
+
 SpirvShader::EmitResult SpirvShader::EmitStore(InsnIterator insn, EmitState *state) const
 {
 	bool atomic = (insn.opcode() == spv::OpAtomicStore);
@@ -104,6 +134,8 @@ SpirvShader::EmitResult SpirvShader::EmitStore(InsnIterator insn, EmitState *sta
 			auto p = ptr + el.offset;
 			if(interleavedByLane) { p = InterleaveByLane(p); }
 			p.Store(SIMD::Int(src[el.index]), robustness, mask, atomic, memoryOrder);
+			//if(state->getExecutionModel() == spv::ExecutionModelGeometry)
+			//	rr::Print("Storing constant:{0}, index: {1}, value:{2}\n", SIMD::Int(pointerId.value()), SIMD::Int(el.index), SIMD::Float(*rr::Pointer<SIMD::Float>(p.base + p.staticOffsets[0])));
 		});
 	}
 	else
@@ -114,6 +146,7 @@ SpirvShader::EmitResult SpirvShader::EmitStore(InsnIterator insn, EmitState *sta
 			auto p = ptr + el.offset;
 			if(interleavedByLane) { p = InterleaveByLane(p); }
 			p.Store(src.Float(el.index), robustness, mask, atomic, memoryOrder);
+			//rr::Print("Storing pointer:{0}, index: {1}, value:{2}\n", SIMD::Int(pointerId.value()), SIMD::Int(el.index), src.Float(el.index));
 		});
 	}
 
@@ -164,7 +197,9 @@ SpirvShader::EmitResult SpirvShader::EmitVariable(InsnIterator insn, EmitState *
 			auto base = &routine->getVariable(resultId)[0];
 			auto elementTy = getType(objectTy.element);
 			auto size = elementTy.sizeInComponents * static_cast<uint32_t>(sizeof(float)) * SIMD::Width;
-			state->createPointer(resultId, SIMD::Pointer(base, size));
+			auto basePtr = SIMD::Pointer(base, size);
+			//rr::Print("creating input pointer ID:{0}, address:{1}\n", SIMD::Int(resultId.value()), basePtr.base);
+			state->createPointer(resultId, basePtr);
 			break;
 		}
 		case spv::StorageClassUniformConstant:

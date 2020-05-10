@@ -20,17 +20,25 @@
 #include "RoutineCache.hpp"
 #include "Pipeline/SpirvShader.hpp"
 
-
 namespace sw {
 struct DrawData;
-struct VertexTask;
-struct Vertex;
+struct Primitive;
+struct Triangle;
+struct GeometryTask
+{
+	unsigned int trianglesCount;
+	unsigned int vertices;
+	unsigned int primitives;
 
-using GeometryRoutineFunction = FunctionT<void(Vertex *output, unsigned int *batch, VertexTask *vertextask, DrawData *draw)>;
+	//TODO cache
+	//VertexCache vertexCache;
+};
+
+using GeometryRoutineFunction = FunctionT<void(Triangle *triangles, Triangle *emittedTriangles, GeometryTask* geometryTask, DrawData *const)>;
 
 class GeometryProcessor
 {
-public:	
+public:
 	struct States : Memset<States>
 	{
 		States()
@@ -66,12 +74,10 @@ public:
 	virtual ~GeometryProcessor();
 	using RoutineType = GeometryRoutineFunction::RoutineType;
 
-	
-
 protected:
 	const State update(const sw::Context *context);
 	RoutineType routine(const State &state, vk::PipelineLayout const *pipelineLayout,
-	                    SpirvShader const *vertexShader, const vk::DescriptorSet::Bindings &descriptorSets);
+	                    SpirvShader const *geometryShader, const vk::DescriptorSet::Bindings &descriptorSets);
 	void setRoutineCacheSize(int cacheSize);
 
 private:

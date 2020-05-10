@@ -55,9 +55,12 @@ static constexpr int MaxBatchSize = 128;
 static constexpr int MaxBatchCount = 16;
 static constexpr int MaxClusterCount = 16;
 static constexpr int MaxDrawCount = 16;
-
+static constexpr int MaxEmitSize = 128*8;
 using TriangleBatch = std::array<Triangle, MaxBatchSize>;
 using PrimitiveBatch = std::array<Primitive, MaxBatchSize>;
+
+using EmitTriangleBatch = std::array<Triangle, MaxEmitSize>;
+using EmitPrimitiveBatch = std::array<Primitive, MaxEmitSize>;
 
 struct DrawData
 {
@@ -122,22 +125,29 @@ struct DrawCall
 
 		TriangleBatch triangles;
 		PrimitiveBatch primitives;
+		EmitTriangleBatch emittedTriangles;
+		EmitPrimitiveBatch emittedPrimitives;
 		VertexTask vertexTask;
+		GeometryTask geometryTask;
 		unsigned int id;
 		unsigned int firstPrimitive;
 		unsigned int numPrimitives;
+		unsigned int numEmittedPrimitives;
 		int numVisible;
+		int numEmittedVisible;
 		marl::Ticket clusterTickets[MaxClusterCount];
 	};
 
 	using Pool = marl::BoundedPool<DrawCall, MaxDrawCount, marl::PoolPolicy::Preserve>;
 	using SetupFunction = int (*)(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count);
+	using GeometryFunction = void (*)(Triangle *triangles, Triangle *emittedTriangles, GeometryTask* task, const DrawCall *drawCall);
 
 	DrawCall();
 	~DrawCall();
 
 	static void run(const marl::Loan<DrawCall> &draw, marl::Ticket::Queue *tickets, marl::Ticket::Queue clusterQueues[MaxClusterCount]);
 	static void processVertices(DrawCall *draw, BatchData *batch);
+	static void processGeometryShader(DrawCall *draw, BatchData *batch, const unsigned int  vertices, const unsigned int primitives);
 	static void processPrimitives(DrawCall *draw, BatchData *batch);
 	static void processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally);
 	void setup();
@@ -149,6 +159,8 @@ struct DrawCall
 	unsigned int numPrimitives;
 	unsigned int numPrimitivesPerBatch;
 	unsigned int numBatches;
+	unsigned int numEmittedVertices;
+	unsigned int numEmittedPrimitives; 
 
 	VkPrimitiveTopology topology;
 	VkProvokingVertexModeEXT provokingVertexMode;
@@ -161,6 +173,7 @@ struct DrawCall
 	PixelProcessor::RoutineType pixelRoutine;
 
 	SetupFunction setupPrimitives;
+	GeometryFunction geometryShader;
 	SetupProcessor::State setupState;
 
 	vk::ImageView *renderTarget[RENDERTARGETS];
@@ -182,6 +195,7 @@ struct DrawCall
 	    VkProvokingVertexModeEXT provokingVertexMode);
 
 	static int setupSolidTriangles(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count);
+	
 	static int setupWireframeTriangles(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count);
 	static int setupPointTriangles(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count);
 	static int setupLines(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count);
@@ -189,6 +203,8 @@ struct DrawCall
 
 	static bool setupLine(Primitive &primitive, Triangle &triangle, const DrawCall &draw);
 	static bool setupPoint(Primitive &primitive, Triangle &triangle, const DrawCall &draw);
+
+	static void geometryRoutineTriangles(Triangle *triangles, Triangle* emittedTriangles, GeometryTask* task, const DrawCall *drawCall);
 };
 
 class alignas(16) Renderer : public VertexProcessor, public PixelProcessor, public SetupProcessor, public GeometryProcessor

@@ -70,11 +70,11 @@ GeometryProgram::~GeometryProgram()
 {
 }
 
-void GeometryProgram::program(Pointer<UInt> &batch, UInt &vertexCount)
+void GeometryProgram::program(Pointer<Byte> &primitives)
 {
 	if(spirvShader)
 	{
-		routine.vertexIndex = *Pointer<SIMD::Int>(As<Pointer<SIMD::Int>>(batch)) +
+		/*routine.vertexIndex = *Pointer<SIMD::Int>(As<Pointer<SIMD::Int>>(batch)) +
 							  SIMD::Int(*Pointer<Int>(data + OFFSET(DrawData, baseVertex)));
 
 		auto it = spirvShader->inputBuiltins.find(spv::BuiltInVertexIndex);
@@ -83,10 +83,11 @@ void GeometryProgram::program(Pointer<UInt> &batch, UInt &vertexCount)
 			assert(it->second.SizeInComponents == 1);
 			routine.getVariable(it->second.Id)[it->second.FirstComponent] =
 				As<SIMD::Float>(routine.vertexIndex);
-		}
-
+		}*/
+		
 		auto activeLaneMask = SIMD::Int(0xFFFFFFFF);
-		Int4 storesAndAtomicsMask = CmpGE(UInt4(vertexCount), UInt4(1, 2, 3, 4));
+		//TODO fix me
+		Int4 storesAndAtomicsMask = CmpGE(UInt4(1), UInt4(1, 2, 3, 4));
 		spirvShader->emit(&routine, activeLaneMask, storesAndAtomicsMask, descriptorSets);
 
 		spirvShader->emitEpilog(&routine);
