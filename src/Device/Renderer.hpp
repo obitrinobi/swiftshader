@@ -150,6 +150,8 @@ struct DrawCall
 	static void processGeometryShader(DrawCall *draw, BatchData *batch, const unsigned int  vertices, const unsigned int primitives);
 	static void processPrimitives(DrawCall *draw, BatchData *batch);
 	static void processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally);
+	static void processEmittedPrimitives(DrawCall *draw, BatchData *batch);
+	static void processEmittedPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally);
 	void setup();
 	void teardown();
 

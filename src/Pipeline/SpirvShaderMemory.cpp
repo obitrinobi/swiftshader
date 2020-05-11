@@ -82,16 +82,10 @@ SpirvShader::EmitResult SpirvShader::EmitVertex(EmitState *state) const
 			
 	If(anyLanesEnabled)
 	{
-		Vector4f v;
-		v.x = pos[it->second.FirstComponent + 0];
-		v.y = pos[it->second.FirstComponent + 1];
-		v.z = pos[it->second.FirstComponent + 2];
-		v.w = pos[it->second.FirstComponent + 3];
-
-		routine->buildInOutputs[routine->counter++] = v.x;
-		routine->buildInOutputs[routine->counter++] = v.y;
-		routine->buildInOutputs[routine->counter++] = v.z;
-		routine->buildInOutputs[routine->counter++] = v.w;
+		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent];
+		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+1];
+		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+2];
+		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+3];
 	}
 	return EmitResult::Continue;
 }

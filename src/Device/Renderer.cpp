@@ -485,6 +485,14 @@ void DrawCall::run(const marl::Loan<DrawCall> &draw, marl::Ticket::Queue *ticket
 					processPixels(draw, batch, finally);
 					return;
 				}
+				draw->setupPrimitives = &DrawCall::setupWireframeTriangles;
+				processEmittedPrimitives(draw.get(), batch.get());
+
+				if(batch->numEmittedVisible > 0)
+				{
+					processEmittedPixels(draw, batch, finally);
+					return;
+				}
 			}
 
 			for(int cluster = 0; cluster < MaxClusterCount; cluster++)
@@ -542,17 +550,24 @@ void DrawCall::processGeometryShader(DrawCall *draw, BatchData *batch, const uns
 	}
 }
 
+void DrawCall::processEmittedPrimitives(DrawCall *draw, BatchData *batch)
+{
+	MARL_SCOPED_EVENT("PRIMITIVES draw %d batch %d", draw->id, batch->id);
+	auto emittedTriangles = &batch->emittedTriangles[0];
+	auto emittedPrimitives = &batch->emittedPrimitives[0];
+	if(batch->numEmittedPrimitives > 0) {
+		batch->numEmittedVisible = draw->setupPrimitives(emittedTriangles, emittedPrimitives, draw, batch->numPrimitives * batch->numEmittedPrimitives);
+	}
+} 
+
 void DrawCall::processPrimitives(DrawCall *draw, BatchData *batch)
 {
 	MARL_SCOPED_EVENT("PRIMITIVES draw %d batch %d", draw->id, batch->id);
 	auto triangles = &batch->triangles[0];
 	auto primitives = &batch->primitives[0];
-	auto emittedTriangles = &batch->emittedTriangles[0];
-	auto emittedPrimitives = &batch->emittedPrimitives[0];
+	
 
 	batch->numVisible = draw->setupPrimitives(triangles, primitives, draw, batch->numPrimitives);
-	if(batch->numEmittedPrimitives > 0)
-		batch->numEmittedVisible = draw->setupPrimitives(emittedTriangles, emittedPrimitives, draw, batch->numPrimitives * batch->numEmittedPrimitives);
 }
 
 void DrawCall::processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally)
@@ -583,6 +598,36 @@ void DrawCall::processPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<
 		});
 	}
 }
+
+
+void DrawCall::processEmittedPixels(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally)
+{
+	struct Data
+	{
+		Data(const marl::Loan<DrawCall> &draw, const marl::Loan<BatchData> &batch, const std::shared_ptr<marl::Finally> &finally)
+		    : draw(draw)
+		    , batch(batch)
+		    , finally(finally)
+		{}
+		marl::Loan<DrawCall> draw;
+		marl::Loan<BatchData> batch;
+		std::shared_ptr<marl::Finally> finally;
+	};
+	auto data = std::make_shared<Data>(draw, batch, finally);
+	for(int cluster = 0; cluster < MaxClusterCount; cluster++)
+	{
+		batch->clusterTickets[cluster].onCall([data, cluster] {
+			auto &draw = data->draw;
+			auto &batch = data->batch;
+			MARL_SCOPED_EVENT("PIXEL draw %d, batch %d, cluster %d", draw->id, batch->id, cluster);
+			if(batch->numEmittedVisible > 0)
+				draw->pixelRoutine(&batch->emittedPrimitives.front(), batch->numEmittedVisible, cluster, MaxClusterCount, draw->data);
+
+			batch->clusterTickets[cluster].done();
+		});
+	}
+}
+
 
 void Renderer::synchronize()
 {
@@ -659,14 +704,7 @@ void DrawCall::geometryRoutineTriangles(Triangle *triangles, Triangle *emittedTr
 		std::cout << "V2 normal:[" << triangles->v2.v[0] << "," << triangles->v2.v[1] << "," << triangles->v2.v[2] << "]" << std::endl;
 		*/
 	DrawData *data = drawCall->data;
-	//drawCall->geometryRoutine(triangles, emittedTriangles, task, data);
-
-	for(unsigned int i = 0; i < task->trianglesCount; i++, emittedTriangles++) 
-	{
-		std::cout << "V0:[" << emittedTriangles->v0.x << "," << emittedTriangles->v0.y << "," << emittedTriangles->v0.z << "]" << std::endl;
-		std::cout << "V1:[" << emittedTriangles->v1.x << "," << emittedTriangles->v1.y << "," << emittedTriangles->v1.z << "]" << std::endl;
-		std::cout << "V2:[" << emittedTriangles->v2.x << "," << emittedTriangles->v2.y << "," << emittedTriangles->v2.z << "]" << std::endl;			
-	}
+	drawCall->geometryRoutine(triangles, emittedTriangles, task, data);
 }
 
 int DrawCall::setupSolidTriangles(Triangle *triangles, Primitive *primitives, const DrawCall *drawCall, int count)
