@@ -17,6 +17,7 @@
 #include "Constants.hpp"
 #include "SpirvShader.hpp"
 #include "Device/Renderer.hpp"
+#include "Reactor/Print.hpp"
 #include <iostream>
 namespace sw {
 
@@ -73,6 +74,7 @@ void GeometryRoutine::writePrimitives(Pointer<Byte> &emittedTriangles, UInt inde
 {
 	//*Pointer<Int4>(vertex + OFFSET(Vertex, position))
 	UInt primitivesCount = *Pointer<UInt>(task + OFFSET(GeometryTask, primitives));
+	rr::Print("PrimitiveCount:{0}\n", primitivesCount);
 	UInt vertexCount12 = *Pointer<UInt>(task + OFFSET(GeometryTask, vertices));
 	UInt primitives = primitivesCount;	
 	UInt counter = 0;
@@ -80,6 +82,7 @@ void GeometryRoutine::writePrimitives(Pointer<Byte> &emittedTriangles, UInt inde
 	Do
 	{
 		UInt vertexCount = *Pointer<UInt>(task + OFFSET(GeometryTask, vertices))/primitives;
+		rr::Print("VertexCount:{0}\n", vertexCount);
 		Array<Pointer<Byte>> triangle_offsets(3);
 		triangle_offsets[0] = emittedTriangles + (index + primitiveCounter)*sizeof(Triangle) + OFFSET(Triangle, v0);
 		triangle_offsets[1] = emittedTriangles + (index + primitiveCounter)*sizeof(Triangle) + OFFSET(Triangle, v1);
@@ -97,21 +100,40 @@ void GeometryRoutine::writePrimitives(Pointer<Byte> &emittedTriangles, UInt inde
 			v.y = routine.buildInOutputs[counter++];
 			v.z = routine.buildInOutputs[counter++];
 			v.w = routine.buildInOutputs[counter++];
-			transpose4x4(v.x, v.y, v.z, v.w);
-			Float4 f; 
-			f.x = v.x.x;
-			f.y = v.y.y;
-			f.z = v.z.z;
-			f.w = v.w.w;
+			
 
-			*Pointer<Float4>(triangle_offsets[vIndex] + OFFSET(Vertex, position),16) = f;
-			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, y)) = v.y.x;
-			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, z)) = v.z.x;
-			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, w)) = v.w.x;
-			//X[vIndex] = v.x.x;
-			//Y[vIndex] = v.y.y;
-			//Z[vIndex] = v.z.z;
-			//W[vIndex] = v.w.w;
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, x)) = v.x.x;
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, y)) = v.y.x;
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, z)) = v.z.x;
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, w)) = v.w.x;
+
+			// Projection and viewport transform.
+			Float4 w = As<Float4>(As<Int4>(v.w) | (As<Int4>(CmpEQ(v.w, Float4(0.0f))) & As<Int4>(Float4(1.0f))));
+			Float4 rhw = Float4(1.0f) / w;
+
+			Vector4f proj;
+			proj.x = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, X0xF)) + v.x * rhw * *Pointer<Float4>(data + OFFSET(DrawData, WxF))));
+			proj.y = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, Y0xF)) + v.y * rhw * *Pointer<Float4>(data + OFFSET(DrawData, HxF))));
+			proj.z = v.z * rhw;
+			proj.w = rhw;
+
+			Float4 pv;
+			pv.x = proj.x;
+			pv.y = proj.y;
+			pv.z = proj.z;
+			pv.w = proj.w;
+
+			*Pointer<Int>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.x)) = *Pointer<Int>(&proj.x);
+			*Pointer<Int>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.y)) = *Pointer<Int>(&proj.y);
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.z)) = *Pointer<Float>(&proj.z);
+			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.w)) = *Pointer<Float>(&proj.w);
+			//transpose4x4(proj.x, proj.y, proj.z, proj.w);
+
+			//*Pointer<Float4>(triangle_offsets[vIndex] + OFFSET(Vertex, projected), 16) = proj.x;
+			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex2 + OFFSET(Vertex, projected), 16) = proj.z;
+			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex1 + OFFSET(Vertex, projected), 16) = proj.y;
+			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex0 + OFFSET(Vertex, projected), 16) = proj.x;
+
 			vIndex++;
 			vertexCount--;
 		}Until(vertexCount == 0);
@@ -144,32 +166,6 @@ void GeometryRoutine::readInputPrimitive(Pointer<Byte> &triangles, UInt index)
 		triangle_offsets[1] = v1;
 		triangle_offsets[2] = v2;
 
-		Array<Float4> pos(3);
-		Array<Float> X(3);
-		Array<Float> Y(3);
-		Array<Float> Z(3);
-		Array<Float> W(3);
-		
-		*Pointer<Int4>(&pos[0]) = *Pointer<Int4>(v0 + OFFSET(Vertex, position), 16);
-		*Pointer<Int4>(&pos[1]) = *Pointer<Int4>(v1 + OFFSET(Vertex, position), 16);
-		*Pointer<Int4>(&pos[2]) = *Pointer<Int4>(v2 + OFFSET(Vertex, position), 16);
-			
-	
-		X[0] = *Pointer<Float>(v1 + OFFSET(Vertex, x));
-		X[1] = *Pointer<Float>(v1 + OFFSET(Vertex, x));
-		X[2] = *Pointer<Float>(v2 + OFFSET(Vertex, x));
-
-		Y[0] = *Pointer<Float>(v0 + OFFSET(Vertex, y));
-		Y[1] = *Pointer<Float>(v1 + OFFSET(Vertex, y));
-		Y[2] = *Pointer<Float>(v2 + OFFSET(Vertex, y));
-
-		Z[0] = *Pointer<Float>(v0 + OFFSET(Vertex, z));
-		Z[1] = *Pointer<Float>(v1 + OFFSET(Vertex, z));
-		Z[2] = *Pointer<Float>(v2 + OFFSET(Vertex, z));
-
-		W[0] = *Pointer<Float>(v0 + OFFSET(Vertex, w));
-		W[1] = *Pointer<Float>(v1 + OFFSET(Vertex, w));
-		W[2] = *Pointer<Float>(v2 + OFFSET(Vertex, w));
 		for(int i = 0; i < MAX_INTERFACE_COMPONENTS; i+=4)
 		{
 			auto stream = state.input[i / 4];
@@ -193,17 +189,15 @@ void GeometryRoutine::readInputPrimitive(Pointer<Byte> &triangles, UInt index)
 		for(unsigned int i = 0; i < 3; i ++) 
 		{
 			Vector4f v;
-			Float4 f;
-			f = pos[i];
-			v.x = f.x;
-			v.y = f.y;
-			v.z = f.z;
-			v.w = f.w;
-			*Pointer<Int4>(&gl_In[i * 7]) = *Pointer<Int4>(&pos[i]);
-			//gl_In[i*7] = v.x;
-			//gl_In[i*7+1] = v.y;
-			//gl_In[i*7+2] = v.z;
-			//gl_In[i*7+3] = v.w;
+			
+			v.x = *Pointer<Float>(triangle_offsets[i] + OFFSET(Vertex, x));
+			v.y = *Pointer<Float>(triangle_offsets[i] + OFFSET(Vertex, y));
+			v.z = *Pointer<Float>(triangle_offsets[i] + OFFSET(Vertex, z));
+			v.w = *Pointer<Float>(triangle_offsets[i] + OFFSET(Vertex, w));
+			gl_In[i*7] = v.x;
+			gl_In[i*7+1] = v.y;
+			gl_In[i*7+2] = v.z;
+			gl_In[i*7+3] = v.w;
 			//gl_In[i*7+4] = w.x;
 			//gl_In[i*7+5] = w.y;
 			//gl_In[i*7+6] = w.z;

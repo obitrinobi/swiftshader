@@ -229,6 +229,7 @@ void Renderer::draw(const sw::Context *context, VkIndexType indexType, unsigned 
 		// TODO make generic
 		draw->numEmittedPrimitives = context->geometryShader->getNumberOfOutputVertices() / 2;
 		draw->numEmittedVertices = context->geometryShader->getNumberOfOutputVertices();
+		std::cout << "emitted vertices: " << draw->numEmittedVertices << std::endl;
 	}
 
 	if(context->isDrawTriangle(false))
