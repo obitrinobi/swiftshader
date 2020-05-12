@@ -82,7 +82,6 @@ void GeometryRoutine::writePrimitives(Pointer<Byte> &emittedTriangles, UInt inde
 	Do
 	{
 		UInt vertexCount = *Pointer<UInt>(task + OFFSET(GeometryTask, vertices))/primitives;
-		rr::Print("VertexCount:{0}\n", vertexCount);
 		Array<Pointer<Byte>> triangle_offsets(3);
 		triangle_offsets[0] = emittedTriangles + (index + primitiveCounter)*sizeof(Triangle) + OFFSET(Triangle, v0);
 		triangle_offsets[1] = emittedTriangles + (index + primitiveCounter)*sizeof(Triangle) + OFFSET(Triangle, v1);
@@ -111,25 +110,20 @@ void GeometryRoutine::writePrimitives(Pointer<Byte> &emittedTriangles, UInt inde
 			Float4 w = As<Float4>(As<Int4>(v.w) | (As<Int4>(CmpEQ(v.w, Float4(0.0f))) & As<Int4>(Float4(1.0f))));
 			Float4 rhw = Float4(1.0f) / w;
 
-			Vector4f proj;
-			proj.x = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, X0xF)) + v.x * rhw * *Pointer<Float4>(data + OFFSET(DrawData, WxF))));
-			proj.y = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, Y0xF)) + v.y * rhw * *Pointer<Float4>(data + OFFSET(DrawData, HxF))));
-			proj.z = v.z * rhw;
-			proj.w = rhw;
-
-			Float4 pv;
-			pv.x = proj.x;
-			pv.y = proj.y;
-			pv.z = proj.z;
-			pv.w = proj.w;
-
-			*Pointer<Int>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.x)) = *Pointer<Int>(&proj.x);
-			*Pointer<Int>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.y)) = *Pointer<Int>(&proj.y);
-			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.z)) = *Pointer<Float>(&proj.z);
-			*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.w)) = *Pointer<Float>(&proj.w);
-			//transpose4x4(proj.x, proj.y, proj.z, proj.w);
-
-			//*Pointer<Float4>(triangle_offsets[vIndex] + OFFSET(Vertex, projected), 16) = proj.x;
+			Vector4f proj1(.0f, .0f, .0f, .0f);
+			//proj1.x = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, X0xF)) + v.x * rhw * *Pointer<Float4>(data + OFFSET(DrawData, WxF))));
+			//proj1.y = As<Float4>(RoundInt(*Pointer<Float4>(data + OFFSET(DrawData, Y0xF)) + v.y * rhw * *Pointer<Float4>(data + OFFSET(DrawData, HxF))));
+			//proj1.z = v.z * rhw;
+			//proj1.w = rhw;
+			transpose4x4(proj1.x, proj1.y, proj1.z, proj1.w);
+			//Int px = As<Int>(proj1.x.x);
+			//transpose4x4(proj1.x, proj1.y, proj1.z, proj1.w);
+			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.x)) = proj1.x.x;
+			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.y)) = proj1.y.x;
+			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.z)) = proj1.z.x;
+			//*Pointer<Float>(triangle_offsets[vIndex] + OFFSET(Vertex, projected.w)) = proj1.w.x;
+			
+			*Pointer<Float4>(triangle_offsets[vIndex] + OFFSET(Vertex, projected),16) = proj1.w;
 			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex2 + OFFSET(Vertex, projected), 16) = proj.z;
 			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex1 + OFFSET(Vertex, projected), 16) = proj.y;
 			//*Pointer<Float4>(vertexCache + sizeof(Vertex) * cacheIndex0 + OFFSET(Vertex, projected), 16) = proj.x;
