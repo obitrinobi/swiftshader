@@ -75,17 +75,21 @@ SpirvShader::EmitResult SpirvShader::EmitVertex(EmitState *state) const
 	auto it = outputBuiltins.find(spv::BuiltInPosition);
 	assert(it != outputBuiltins.end());
 	assert(it->second.SizeInComponents == 4);
+		
 	auto routine = state->routine;
-
-	auto &pos = routine->getVariable(it->second.Id);
+	auto gl_inId = getObjectId("");
+	auto &pos = routine->getVariable(gl_inId);
+	
+	
 	auto anyLanesEnabled = AnyTrue(mask);
 			
 	If(anyLanesEnabled)
 	{
-		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent];
-		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+1];
-		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+2];
-		routine->buildInOutputs[routine->counter++] = pos[it->second.FirstComponent+3];
+		routine->buildInOutputs[routine->counter++] = pos[0];
+		routine->buildInOutputs[routine->counter++] = pos[1];
+		routine->buildInOutputs[routine->counter++] = pos[2];
+		routine->buildInOutputs[routine->counter++] = pos[3];
+		rr::Print("Emitted Vertex:{0}, {1}, {2}, {3}\n", pos[0], pos[1], pos[2], pos[3]);
 	}
 	return EmitResult::Continue;
 }

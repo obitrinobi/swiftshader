@@ -55,7 +55,7 @@ static constexpr int MaxBatchSize = 128;
 static constexpr int MaxBatchCount = 16;
 static constexpr int MaxClusterCount = 16;
 static constexpr int MaxDrawCount = 16;
-static constexpr int MaxEmitSize = 128*8;
+static constexpr int MaxEmitSize = 2048;
 using TriangleBatch = std::array<Triangle, MaxBatchSize>;
 using PrimitiveBatch = std::array<Primitive, MaxBatchSize>;
 
