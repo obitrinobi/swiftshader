@@ -77,19 +77,21 @@ SpirvShader::EmitResult SpirvShader::EmitVertex(EmitState *state) const
 	assert(it->second.SizeInComponents == 4);
 		
 	auto routine = state->routine;
+	//auto &pos = routine->getVariable(it->second.Id);
+	
 	auto gl_inId = getObjectId("");
 	auto &pos = routine->getVariable(gl_inId);
-	
+		
 	
 	auto anyLanesEnabled = AnyTrue(mask);
 			
 	If(anyLanesEnabled)
 	{
-		routine->buildInOutputs[routine->counter++] = pos[0];
-		routine->buildInOutputs[routine->counter++] = pos[1];
-		routine->buildInOutputs[routine->counter++] = pos[2];
-		routine->buildInOutputs[routine->counter++] = pos[3];
-		rr::Print("Emitted Vertex:{0}, {1}, {2}, {3}\n", pos[0], pos[1], pos[2], pos[3]);
+		Float4 p = pos[0];
+		routine->buildInOutputs[routine->counter++] = Float4(Extract(p, 0));
+		routine->buildInOutputs[routine->counter++] = Float4(Extract(p, 1));
+		routine->buildInOutputs[routine->counter++] = Float4(Extract(p, 2));
+		routine->buildInOutputs[routine->counter++] = Float4(Extract(p, 3));
 	}
 	return EmitResult::Continue;
 }
@@ -133,7 +135,7 @@ SpirvShader::EmitResult SpirvShader::EmitStore(InsnIterator insn, EmitState *sta
 			if(interleavedByLane) { p = InterleaveByLane(p); }
 			p.Store(SIMD::Int(src[el.index]), robustness, mask, atomic, memoryOrder);
 			//if(state->getExecutionModel() == spv::ExecutionModelGeometry)
-			//	rr::Print("Storing constant:{0}, index: {1}, value:{2}\n", SIMD::Int(pointerId.value()), SIMD::Int(el.index), SIMD::Float(*rr::Pointer<SIMD::Float>(p.base + p.staticOffsets[0])));
+			//rr::Print("Storing constant:{0}, index: {1}, value:{2}\n", SIMD::Int(pointerId.value()), SIMD::Int(el.index), SIMD::Float(*rr::Pointer<SIMD::Float>(p.base + p.staticOffsets[0])));
 		});
 	}
 	else
